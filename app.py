@@ -592,6 +592,20 @@ elif menu == "⚙️ Ayarlar":
             try:
                 new_page_data = json.loads(json_input)
                 
+                # Zorunlu alanları kontrol et
+                if 'unit_number' not in new_page_data:
+                    st.error("❌ 'unit_number' alanı zorunludur!")
+                    st.stop()
+                if 'unit_title' not in new_page_data:
+                    st.error("❌ 'unit_title' alanı zorunludur!")
+                    st.stop()
+                if 'page_number' not in new_page_data:
+                    st.error("❌ 'page_number' alanı zorunludur!")
+                    st.stop()
+                if 'sections' not in new_page_data:
+                    st.error("❌ 'sections' alanı zorunludur!")
+                    st.stop()
+                
                 unit_num = new_page_data['unit_number']
                 unit_title = new_page_data['unit_title']
                 page_num = new_page_data['page_number']
