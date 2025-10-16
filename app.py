@@ -1,6 +1,8 @@
 import streamlit as st
 import json
 from datetime import datetime
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Sayfa ayarları
 st.set_page_config(
@@ -21,6 +23,90 @@ if 'summaries' not in st.session_state:
 if 'selected_lesson' not in st.session_state:
     st.session_state.selected_lesson = None
 
+# GRAFİK ÇİZİM FONKSİYONLARI
+def draw_budget_constraint(R1=100, R2=80, j12=0.1):
+    """İki dönemli bütçe kısıtı grafiği"""
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Bütçe doğrusu hesaplama
+    # C2 = R1(1+j12) + R2 - (1+j12)C1
+    C1_max = (R1 * (1 + j12) + R2) / (1 + j12)  # C2=0 olduğunda
+    C2_max = R1 * (1 + j12) + R2  # C1=0 olduğunda
+    
+    C1_range = np.linspace(0, C1_max, 100)
+    C2_budget = R1 * (1 + j12) + R2 - (1 + j12) * C1_range
+    
+    # Bütçe doğrusu çiz
+    ax.plot(C1_range, C2_budget, 'b-', linewidth=2, label='Bütçe Doğrusu (AB)')
+    
+    # Farksızlık eğrileri (örnek)
+    C1_indiff = np.linspace(20, C1_max - 20, 100)
+    # U1 - düşük fayda
+    C2_indiff1 = 3000 / C1_indiff
+    ax.plot(C1_indiff, C2_indiff1, 'g--', linewidth=1.5, alpha=0.7, label='U¹')
+    
+    # U2 - yüksek fayda (teğet)
+    C2_indiff2 = 5000 / C1_indiff
+    ax.plot(C1_indiff, C2_indiff2, 'r--', linewidth=1.5, alpha=0.7, label='U²')
+    
+    # Başlangıç noktası (R)
+    ax.plot(R1, R2, 'ko', markersize=10, label=f'Başlangıç (R): ({R1}, {R2})')
+    ax.annotate('R', xy=(R1, R2), xytext=(R1+5, R2+5), fontsize=12, fontweight='bold')
+    
+    # Optimum nokta (P) - yaklaşık
+    C1_opt = C1_max * 0.55
+    C2_opt = R1 * (1 + j12) + R2 - (1 + j12) * C1_opt
+    ax.plot(C1_opt, C2_opt, 'ro', markersize=12, label=f'Optimum (P): ({C1_opt:.1f}, {C2_opt:.1f})')
+    ax.annotate('P', xy=(C1_opt, C2_opt), xytext=(C1_opt+5, C2_opt+5), 
+                fontsize=12, fontweight='bold', color='red')
+    
+    # Eksen ayarları
+    ax.set_xlabel('C₁ (Birinci Dönem Tüketimi)', fontsize=12, fontweight='bold')
+    ax.set_ylabel('C₂ (İkinci Dönem Tüketimi)', fontsize=12, fontweight='bold')
+    ax.set_title('İki Dönemli Tüketici Optimumu', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right')
+    ax.set_xlim(0, C1_max * 1.1)
+    ax.set_ylim(0, C2_max * 1.1)
+    
+    # Bilgi kutusu
+    info_text = f'Faiz Oranı (j₁₂): {j12*100:.1f}%\nBütçe Eğimi: -(1+j₁₂) = -{1+j12:.2f}'
+    ax.text(0.02, 0.98, info_text, transform=ax.transAxes, 
+            verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    return fig
+
+def draw_supply_demand(P_eq=10, Q_eq=100):
+    """Arz-talep grafiği"""
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Fiyat aralığı
+    P_range = np.linspace(0, 20, 100)
+    
+    # Talep eğrisi: Q_d = 200 - 10P
+    Q_demand = 200 - 10 * P_range
+    
+    # Arz eğrisi: Q_s = 10P
+    Q_supply = 10 * P_range
+    
+    ax.plot(Q_demand, P_range, 'b-', linewidth=2, label='Talep Eğrisi')
+    ax.plot(Q_supply, P_range, 'r-', linewidth=2, label='Arz Eğrisi')
+    
+    # Denge noktası
+    ax.plot(Q_eq, P_eq, 'go', markersize=15, label=f'Denge: (Q={Q_eq}, P={P_eq})')
+    ax.axhline(y=P_eq, color='gray', linestyle='--', alpha=0.5)
+    ax.axvline(x=Q_eq, color='gray', linestyle='--', alpha=0.5)
+    
+    ax.set_xlabel('Miktar (Q)', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Fiyat (P)', fontsize=12, fontweight='bold')
+    ax.set_title('Arz ve Talep Dengesi', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right')
+    ax.set_xlim(0, 220)
+    ax.set_ylim(0, 22)
+    
+    return fig
+
 # Demo veri yükleme
 if len(st.session_state.lessons) == 0:
     st.session_state.lessons = [
@@ -32,7 +118,7 @@ if len(st.session_state.lessons) == 0:
                     {
                         "id": "s1",
                         "type": "text",
-                        "content": "İki dönemli tüketici modeli, tüketicilerin bugün ve gelecekte tüketim kararlarını nasıl verdiklerini analiz eder."
+                        "content": "İki dönemli tüketici modeli, tüketicinin gelir ve faiz oranları kısıtı altında, bugünkü (C₁) ve gelecekteki (C₂) tüketimi arasındaki tercihlerini eniyilemesini inceler."
                     },
                     {
                         "id": "s2",
@@ -42,7 +128,15 @@ if len(st.session_state.lessons) == 0:
                     {
                         "id": "s3",
                         "type": "text",
-                        "content": "Bu modelde tüketici iki dönem için optimizasyon yapar. Birinci dönem geliri R₁, ikinci dönem geliri R₂'dir."
+                        "content": "Tüketici optimumu gösteren (P) noktasında, bütçe doğrusunun eğimi ile zaman kayıtsızlık eğrisinin eğimi birbirine eşittir."
+                    },
+                    {
+                        "id": "s4",
+                        "type": "graph",
+                        "graph_type": "budget_constraint",
+                        "title": "İki Dönemli Optimum Tüketim",
+                        "description": "Bütçe doğrusu ve farksızlık eğrileri",
+                        "params": {"R1": 100, "R2": 80, "j12": 0.1}
                     }
                 ]
             }
@@ -55,7 +149,15 @@ if len(st.session_state.lessons) == 0:
                     {
                         "id": "s1",
                         "type": "text",
-                        "content": "Arz ve talep, piyasa ekonomisinin temel dinamiklerini açıklar."
+                        "content": "Arz ve talep, piyasa ekonomisinin temel dinamiklerini açıklar. Fiyat mekanizması bu iki kuvvetin etkileşimiyle oluşur."
+                    },
+                    {
+                        "id": "s2",
+                        "type": "graph",
+                        "graph_type": "supply_demand",
+                        "title": "Arz ve Talep Dengesi",
+                        "description": "Piyasa denge noktası",
+                        "params": {"P_eq": 10, "Q_eq": 100}
                     }
                 ]
             }
@@ -73,11 +175,6 @@ if len(st.session_state.lessons) == 0:
                     "question": "İki dönemli modelde faiz oranı artarsa bütçe doğrusunun eğimi nasıl değişir?",
                     "options": ["Artar (daha dik)", "Azalır (daha yatık)", "Değişmez", "Belirsiz"],
                     "correct": 0
-                },
-                {
-                    "id": "q2",
-                    "type": "classic",
-                    "question": "İki dönemli tüketici modelinde optimum noktanın şartlarını açıklayın."
                 }
             ]
         }
@@ -140,44 +237,84 @@ if menu == "📚 Dersler":
             note_key = f"{lesson['id']}-{section['id']}"
             section_notes = st.session_state.notes.get(note_key, [])
             
+            # Not durumunu kontrol et
+            show_note_key = f"show_note_{note_key}"
+            if show_note_key not in st.session_state:
+                st.session_state[show_note_key] = False
+            
             # Bölüm içeriği
             col1, col2 = st.columns([12, 1])
             
             with col1:
                 if section['type'] == 'text':
-                    st.markdown(f"**{section['content']}**")
+                    st.markdown(f"{section['content']}")
                 
                 elif section['type'] == 'formula':
                     st.latex(section['content'])
                 
                 elif section['type'] == 'graph':
-                    st.info(f"📊 **{section['content'].get('title', 'Grafik')}**")
-                    st.caption(section['content'].get('description', ''))
+                    st.subheader(f"📊 {section.get('title', 'Grafik')}")
+                    st.caption(section.get('description', ''))
+                    
+                    # Grafik parametrelerini al
+                    params = section.get('params', {})
+                    graph_type = section.get('graph_type', 'budget_constraint')
+                    
+                    # İnteraktif parametreler
+                    if graph_type == 'budget_constraint':
+                        col_a, col_b, col_c = st.columns(3)
+                        with col_a:
+                            R1 = st.slider("R₁ - Gelir 1", 50, 200, params.get('R1', 100), key=f"r1_{idx}")
+                        with col_b:
+                            R2 = st.slider("R₂ - Gelir 2", 50, 200, params.get('R2', 80), key=f"r2_{idx}")
+                        with col_c:
+                            j12 = st.slider("j₁₂ - Faiz", 0.0, 0.5, params.get('j12', 0.1), 0.01, key=f"j12_{idx}")
+                        
+                        fig = draw_budget_constraint(R1, R2, j12)
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    elif graph_type == 'supply_demand':
+                        col_a, col_b = st.columns(2)
+                        with col_a:
+                            P_eq = st.slider("Denge Fiyatı (P)", 5, 15, params.get('P_eq', 10), key=f"p_{idx}")
+                        with col_b:
+                            Q_eq = st.slider("Denge Miktarı (Q)", 50, 150, params.get('Q_eq', 100), key=f"q_{idx}")
+                        
+                        fig = draw_supply_demand(P_eq, Q_eq)
+                        st.pyplot(fig)
+                        plt.close()
             
             with col2:
                 # Not butonu
                 note_count = len(section_notes)
                 if note_count > 0:
-                    button_label = f"📌 {note_count}"
+                    button_label = f"📌{note_count}"
                 else:
                     button_label = "📝"
                 
-                if st.button(button_label, key=f"note_btn_{note_key}"):
-                    st.session_state[f"show_note_{note_key}"] = not st.session_state.get(f"show_note_{note_key}", False)
+                if st.button(button_label, key=f"note_btn_{note_key}_{idx}"):
+                    st.session_state[show_note_key] = not st.session_state[show_note_key]
             
             # Not paneli
-            if st.session_state.get(f"show_note_{note_key}", False):
-                with st.expander("💡 Notlar", expanded=True):
-                    # Mevcut notları göster
-                    for note in section_notes:
-                        st.info(f"**{note['date']}**\n\n{note['text']}")
+            if st.session_state[show_note_key]:
+                with st.container():
+                    st.markdown("---")
+                    st.markdown("### 💡 Notlar")
                     
-                    # Yeni not ekle
-                    with st.form(key=f"note_form_{note_key}"):
-                        new_note = st.text_area("Yeni not ekle:", key=f"note_input_{note_key}")
+                    # Mevcut notları göster
+                    if len(section_notes) > 0:
+                        for note in section_notes:
+                            st.info(f"**{note['date']}**\n\n{note['text']}")
+                    
+                    # Yeni not ekle - UNIQUE KEY İLE
+                    note_form_key = f"note_form_{note_key}_{idx}"
+                    with st.form(key=note_form_key):
+                        new_note = st.text_area("Yeni not ekle:", key=f"note_input_{note_key}_{idx}")
                         submitted = st.form_submit_button("💾 Kaydet")
                         
                         if submitted and new_note.strip():
+                            # Not ekle
                             if note_key not in st.session_state.notes:
                                 st.session_state.notes[note_key] = []
                             
@@ -186,7 +323,7 @@ if menu == "📚 Dersler":
                                 "text": new_note,
                                 "date": datetime.now().strftime("%d.%m.%Y %H:%M")
                             })
-                            st.success("Not eklendi!")
+                            st.success("✅ Not eklendi!")
                             st.rerun()
             
             st.markdown("---")
@@ -369,7 +506,7 @@ elif menu == "⚙️ Ayarlar":
             type="primary"
         )
         
-        st.info(f"📊 İstatistikler:\n- {len(st.session_state.lessons)} Ünite\n- {len(st.session_state.tests)} Test\n- {len(st.session_state.notes)} Not Grubu\n- {len(st.session_state.summaries)} Özet")
+        st.info(f"📊 İstatistikler:\n- {len(st.session_state.lessons)} Ünite\n- {len(st.session_state.tests)} Test\n- {sum(len(notes) for notes in st.session_state.notes.values())} Not\n- {len(st.session_state.summaries)} Özet")
     
     with tab3:
         st.subheader("➕ Yeni Ünite/Test Ekle")
@@ -399,7 +536,8 @@ elif menu == "⚙️ Ayarlar":
 
 # Footer
 st.sidebar.markdown("---")
-st.sidebar.info("""
+st.sidebar.info(f"""
 **📈 Mikro Ekonomi Lab v2.0**  
-Gelişmiş çalışma platformu
+✅ {len(st.session_state.lessons)} Ünite yüklü  
+✅ {sum(len(notes) for notes in st.session_state.notes.values())} Not
 """)
